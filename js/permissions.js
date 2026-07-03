@@ -52,3 +52,5 @@ export const canDelete = resource => activeEngine.canDelete(resource);
 export const canApprove = resource => activeEngine.canApprove(resource);
 export const canExport = resource => activeEngine.canExport(resource);
 export const canPrint = resource => activeEngine.canPrint(resource);
+export const canUpload = resource => activeEngine.canUpload(resource);
+export const canConfigure = resource => activeEngine.canConfigure(resource);

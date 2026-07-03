@@ -4,5 +4,5 @@ export const AppConfig = Object.freeze({
   },
   supabase: { url: window.SURYAM_SUPABASE_URL || '', anonKey: window.SURYAM_SUPABASE_ANON_KEY || '' },
   roles: ['admin','manager','sales','installation_engineer','service_engineer','store_manager','hr','accounts','employee','customer','viewer'],
-  modules: ['dashboard','crm','customers','inventory','installation','service','amc','employees','accounts','reports','settings']
+  modules: ['dashboard','profile','company','branches','users','roles','permissions','activity','settings','crm','customers','inventory','installation','service','amc','employees','accounts','reports']
 });
