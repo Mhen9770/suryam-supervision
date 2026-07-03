@@ -29,7 +29,10 @@ export class Store {
   static async rpc(name, args = {}) { if (!this.client) return null; return this.#unwrap(await this.client.rpc(name, args)); }
   static async upload(bucket, path, file, options = { upsert: true }) { if (!this.client) throw new Error('Supabase is required for secure file uploads.'); return this.#unwrap(await this.client.storage.from(bucket).upload(path, file, options)); }
   static async removeFile(bucket, paths = []) { if (!this.client) throw new Error('Supabase is required for secure file deletes.'); return this.#unwrap(await this.client.storage.from(bucket).remove(Array.isArray(paths) ? paths : [paths])); }
-  static async login(email, password) { if (!this.client) return { user: { id: 'offline-admin', email, role: 'admin' }, session: { access_token: 'offline' } }; return this.#unwrap(await this.client.auth.signInWithPassword({ email, password })); }
+  static async login(email, password) { if (!this.client) return { user: { id: 'offline-admin', email, role: 'admin' }, session: { access_token: 'offline', user: { id: 'offline-admin', email } } }; return this.#unwrap(await this.client.auth.signInWithPassword({ email, password })); }
+  static async resetPassword(email) { if (!this.client) return { email }; return this.#unwrap(await this.client.auth.resetPasswordForEmail(email)); }
+  static async updatePassword(password) { if (!this.client) return { ok: true }; return this.#unwrap(await this.client.auth.updateUser({ password })); }
+  static async inviteUser(email, options = {}) { if (!this.client) return { email, ...options }; return this.#unwrap(await this.client.auth.admin.inviteUserByEmail(email, options)); }
   static async logout() { if (this.client) await this.client.auth.signOut(); }
   static async session() { if (!this.client) return null; return (await this.client.auth.getSession()).data.session; }
   static async refreshSession() { if (!this.client) return null; return this.#unwrap(await this.client.auth.refreshSession()); }

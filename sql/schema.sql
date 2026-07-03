@@ -132,3 +132,55 @@ on conflict (slug) do nothing;
 insert into blog_categories(name, slug, description) values ('CCTV','cctv','Camera planning and buying guides'),('Maintenance','maintenance','AMC and support advice') on conflict (slug) do nothing;
 insert into faq(question, answer, category, sort_order) values ('Do you provide free site survey?','Yes. Website survey requests are captured as CRM leads and assigned for follow-up.','Survey',1),('Can I view CCTV on mobile?','Yes. We configure secure mobile viewing and train users during handover.','CCTV',2) on conflict do nothing;
 insert into pricing_packages(name, property_type, price, features, products_included) values ('Home Starter','Home',14999,'["4 cameras","Mobile viewing","Installation"]','["Cameras","Recorder","Cable"]'),('Office Secure','Office',29999,'["8 cameras","NVR","AMC option"]','["IP cameras","NVR","PoE switch"]') on conflict do nothing;
+
+-- Administration module extensions: identity, company administration and user management
+alter table company_settings add column if not exists primary_color text default '#2563eb';
+alter table company_settings add column if not exists secondary_color text default '#0f172a';
+alter table company_settings add column if not exists dark_mode_default boolean default false;
+alter table company_settings add column if not exists company_signature text;
+alter table company_settings add column if not exists terms_conditions text;
+alter table company_settings add column if not exists invoice_footer text;
+alter table company_settings add column if not exists quotation_footer text;
+alter table company_settings add column if not exists email_templates jsonb default '{}';
+alter table branches add column if not exists status text default 'active';
+alter table branches add column if not exists working_hours jsonb default '{}';
+alter table branches add column if not exists location jsonb default '{}';
+alter table branches add column if not exists google_maps_url text;
+alter table profiles add column if not exists email text;
+alter table profiles add column if not exists employee_code text;
+alter table profiles add column if not exists department text;
+alter table profiles add column if not exists designation text;
+alter table profiles add column if not exists avatar_url text;
+alter table profiles add column if not exists joining_date date;
+alter table profiles add column if not exists bio text;
+alter table profiles add column if not exists skills text[] default '{}';
+alter table profiles add column if not exists emergency_contact jsonb default '{}';
+alter table profiles add column if not exists two_factor_enabled boolean default false;
+alter table profiles add column if not exists last_login_at timestamptz;
+alter table profiles add column if not exists login_count integer default 0;
+alter table profiles add column if not exists locked_until timestamptz;
+alter table roles add column if not exists priority integer default 0;
+alter table roles add column if not exists status text default 'active';
+
+create table if not exists login_history (id uuid primary key default gen_random_uuid(), user_id uuid references profiles(id), action text not null check (action in ('login','logout','failed_login','refresh')), ip inet, browser text, device text, metadata jsonb default '{}', created_at timestamptz default now());
+create table if not exists user_sessions (id uuid primary key default gen_random_uuid(), user_id uuid references profiles(id) on delete cascade, session_token_hash text not null, ip inet, browser text, device text, remember_me boolean default false, refreshed_at timestamptz, expires_at timestamptz, revoked_at timestamptz, created_at timestamptz default now());
+create table if not exists password_resets (id uuid primary key default gen_random_uuid(), user_id uuid references profiles(id) on delete cascade, email text not null, token_hash text not null, requested_ip inet, used_at timestamptz, expires_at timestamptz not null, created_at timestamptz default now());
+create table if not exists email_verification_tokens (id uuid primary key default gen_random_uuid(), user_id uuid references profiles(id) on delete cascade, email text not null, token_hash text not null, verified_at timestamptz, expires_at timestamptz not null, created_at timestamptz default now());
+create table if not exists user_preferences (id uuid primary key default gen_random_uuid(), user_id uuid references profiles(id) on delete cascade unique, theme text default 'system', language text default 'en', timezone text default 'Asia/Kolkata', currency text default 'INR', table_preferences jsonb default '{}', created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists notification_preferences (id uuid primary key default gen_random_uuid(), user_id uuid references profiles(id) on delete cascade unique, browser_enabled boolean default true, email_enabled boolean default true, sms_enabled boolean default false, whatsapp_enabled boolean default false, preferences jsonb default '{}', created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists company_documents (id uuid primary key default gen_random_uuid(), company_id uuid references company_settings(id) on delete cascade, document_type text not null, file_url text not null, created_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists branch_documents (id uuid primary key default gen_random_uuid(), branch_id uuid references branches(id) on delete cascade, document_type text not null, file_url text not null, created_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists system_logs (id uuid primary key default gen_random_uuid(), level text not null default 'info', module text, action text, message text, metadata jsonb default '{}', created_at timestamptz default now());
+
+create index if not exists idx_login_history_user_created on login_history(user_id, created_at desc);
+create index if not exists idx_user_sessions_user_active on user_sessions(user_id) where revoked_at is null;
+create index if not exists idx_activity_logs_action_created on activity_logs(action, created_at desc);
+
+do $$ declare t text; begin foreach t in array array['login_history','user_sessions','password_resets','email_verification_tokens','user_preferences','notification_preferences','company_documents','branch_documents','system_logs'] loop execute format('alter table %I enable row level security', t); end loop; end $$;
+do $$ declare t text; begin foreach t in array array['login_history','user_sessions','password_resets','email_verification_tokens','user_preferences','notification_preferences','company_documents','branch_documents','system_logs'] loop execute format('drop policy if exists "admin_read" on %I', t); execute format('create policy "admin_read" on %I for select to authenticated using (has_permission(%L,''view''))', t, t); execute format('drop policy if exists "admin_write" on %I', t); execute format('create policy "admin_write" on %I for all to authenticated using (has_permission(%L,''configure'')) with check (has_permission(%L,''configure''))', t, t, t); end loop; end $$;
+
+insert into permissions(module, action)
+select module, action from unnest(array['profile','company','branches','users','roles','permissions','activity','login_history','user_sessions','password_resets','email_verification_tokens','user_preferences','notification_preferences','company_documents','branch_documents','system_logs']) module
+cross join unnest(array['view','create','edit','delete','export','approve','print','upload','configure']) action
+on conflict (module, action) do nothing;
+insert into role_permissions(role_id, permission_id) select r.id, p.id from roles r cross join permissions p where r.name='admin' on conflict do nothing;

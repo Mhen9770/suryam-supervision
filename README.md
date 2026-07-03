@@ -92,3 +92,63 @@ The router supports protected routes, permission guards, 404 handling and forbid
 - Public website with hero, service discovery, contact actions and free site survey route.
 - ERP shell with dashboard, CRM, customers, inventory, installation, service, AMC, employees, accounts, reports and settings routes.
 - This PR intentionally does not build CRM, inventory, installation or service screens; it only establishes the reusable enterprise foundation for future modules.
+
+## Administration Center
+
+This PR adds a complete Administration Center for identity, company administration and user management. New protected routes are:
+
+- `#/dashboard`
+- `#/profile`
+- `#/company`
+- `#/branches`
+- `#/users`
+- `#/roles`
+- `#/permissions`
+- `#/activity`
+- `#/settings`
+
+Administration screens reuse `Store.js`, the Permission Engine and shared UI primitives. They include enterprise cards, responsive tables, sticky headers, search/filter/sort/pagination placeholders, bulk selection, export/delete actions, badges, statistics and activity timelines.
+
+### Profile and authentication
+
+`#/profile` shows the logged-in user's photo, full name, email, phone, employee ID, department, designation, role, branch, joining date, bio, skills, emergency contact, two-factor status, login history and active-session area. Authentication now exposes remember-me UI, password reset requests, login activity logging, session refresh support and foundations for account lock, invite flow, email verification, concurrent sessions and logout-all-devices.
+
+### Company settings
+
+`#/company` manages company logo, legal/company identity, GST, PAN, address, phone, email, website, invoice and quotation prefixes, currency, timezone, financial year, default GST, brand colors, dark-mode default, signature, terms, invoice/quotation footers and email templates.
+
+### Branch management
+
+`#/branches` provides branch CRUD entry points with branch code, manager, address, phone, email, status, working hours, location, Google Maps support, employee assignment visibility and branch statistics.
+
+### User, role and permission management
+
+`#/users` provides employee/user management with name, email, phone, employee code, role, branch, department, designation, status, avatar, last login, login count, password reset, invite, enable/disable, lock/unlock, delete, search, filters, import/export and bulk-action controls.
+
+`#/roles` provides role CRUD, description, priority, status and clone-role actions.
+
+`#/permissions` renders a module/action permission matrix for View, Create, Edit, Delete, Approve, Export, Print, Upload and Configure. Permission changes are guarded by `Permissions.canConfigure()` and audited for `role_permissions` updates.
+
+### Activity, notifications and settings
+
+`#/activity` lists login, logout, update, delete, approval, export and import events with date, user, module, action, IP, browser and device filters plus export controls.
+
+The Administration Center includes a notification center with unread count, mark-read controls, delete/filter foundations and browser notification permission handling.
+
+`#/settings` centralizes theme, language, timezone, currency, backup, notification, email, SMS, WhatsApp, security, password policy and session-timeout settings.
+
+### Database additions
+
+`sql/schema.sql` now extends the normalized enterprise schema with profile identity fields, branch metadata, company branding/terms fields and administration tables for:
+
+- `login_history`
+- `user_sessions`
+- `password_resets`
+- `email_verification_tokens`
+- `user_preferences`
+- `notification_preferences`
+- `company_documents`
+- `branch_documents`
+- `system_logs`
+
+The schema keeps RLS enabled and seeds administration permissions so database policies remain the source of truth while frontend checks provide user experience guardrails.
