@@ -1,117 +1,96 @@
 create extension if not exists pgcrypto;
 
-create table if not exists profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  full_name text not null,
-  phone text,
-  role text not null default 'employee',
-  branch text,
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
+create or replace function app_user_id() returns uuid language sql stable as $$ select nullif(auth.uid()::text, '')::uuid $$;
+create or replace function set_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end; $$;
 
-create table if not exists customers (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  phone text not null,
-  email text,
-  gstin text,
-  billing_address text,
-  shipping_address text,
-  created_by uuid references profiles(id),
-  updated_by uuid references profiles(id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
+create table if not exists company_settings (id uuid primary key default gen_random_uuid(), company_name text not null, logo_url text, gst text, pan text, address text, phone text, email text, website text, invoice_prefix text default 'INV', quotation_prefix text default 'QUO', currency text default 'INR', timezone text default 'Asia/Kolkata', financial_year_start date, financial_year_end date, default_tax numeric(5,2) default 18, brand_colors jsonb default '{}', theme text default 'light', created_by uuid, updated_by uuid, created_at timestamptz not null default now(), updated_at timestamptz not null default now(), deleted_at timestamptz);
+create table if not exists branches (id uuid primary key default gen_random_uuid(), company_id uuid references company_settings(id), name text not null, code text unique not null, address text, phone text, email text, manager_id uuid, created_by uuid, updated_by uuid, created_at timestamptz not null default now(), updated_at timestamptz not null default now(), deleted_at timestamptz);
+create table if not exists profiles (id uuid primary key references auth.users(id) on delete cascade, full_name text not null, phone text, role text not null default 'employee', branch_id uuid references branches(id), is_active boolean not null default true, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz not null default now(), updated_at timestamptz not null default now(), deleted_at timestamptz);
+alter table company_settings drop constraint if exists company_settings_created_by_fk;
+alter table company_settings add constraint company_settings_created_by_fk foreign key (created_by) references profiles(id) deferrable initially deferred;
+alter table company_settings drop constraint if exists company_settings_updated_by_fk;
+alter table company_settings add constraint company_settings_updated_by_fk foreign key (updated_by) references profiles(id) deferrable initially deferred;
+alter table branches drop constraint if exists branches_manager_id_fk;
+alter table branches add constraint branches_manager_id_fk foreign key (manager_id) references profiles(id) deferrable initially deferred;
+alter table branches drop constraint if exists branches_created_by_fk;
+alter table branches add constraint branches_created_by_fk foreign key (created_by) references profiles(id) deferrable initially deferred;
+alter table branches drop constraint if exists branches_updated_by_fk;
+alter table branches add constraint branches_updated_by_fk foreign key (updated_by) references profiles(id) deferrable initially deferred;
 
-create table if not exists leads (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  phone text not null,
-  email text,
-  source text not null default 'Website',
-  status text not null default 'New',
-  requirement text,
-  assigned_to uuid references profiles(id),
-  customer_id uuid references customers(id),
-  next_follow_up_at timestamptz,
-  created_by uuid references profiles(id),
-  updated_by uuid references profiles(id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
+create table if not exists roles (id uuid primary key default gen_random_uuid(), name text unique not null, label text not null, description text, is_system boolean default true, created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists permissions (id uuid primary key default gen_random_uuid(), module text not null, action text not null check (action in ('view','create','edit','delete','export','approve','print','upload','configure')), description text, created_at timestamptz default now(), unique(module, action));
+create table if not exists role_permissions (role_id uuid references roles(id) on delete cascade, permission_id uuid references permissions(id) on delete cascade, created_by uuid references profiles(id), created_at timestamptz default now(), primary key(role_id, permission_id));
+create table if not exists user_roles (user_id uuid references profiles(id) on delete cascade, role_id uuid references roles(id) on delete cascade, branch_id uuid references branches(id), created_by uuid references profiles(id), created_at timestamptz default now(), primary key(user_id, role_id, branch_id));
 
-create table if not exists products (
-  id uuid primary key default gen_random_uuid(),
-  sku text unique not null,
-  name text not null,
-  category text not null,
-  brand text,
-  unit text not null default 'pcs',
-  sale_price numeric(12,2) not null default 0,
-  low_stock_qty integer not null default 5,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
+create table if not exists customers (id uuid primary key default gen_random_uuid(), branch_id uuid references branches(id), name text not null, phone text not null, email text, gstin text, pan text, status text default 'active', created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz not null default now(), updated_at timestamptz not null default now(), deleted_at timestamptz);
+create table if not exists customer_addresses (id uuid primary key default gen_random_uuid(), customer_id uuid not null references customers(id) on delete cascade, type text default 'installation', address_line1 text not null, address_line2 text, city text, state text, postal_code text, country text default 'India', latitude numeric, longitude numeric, is_default boolean default false, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists customer_contacts (id uuid primary key default gen_random_uuid(), customer_id uuid not null references customers(id) on delete cascade, name text not null, designation text, phone text, email text, is_primary boolean default false, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists customer_documents (id uuid primary key default gen_random_uuid(), customer_id uuid not null references customers(id) on delete cascade, document_type text not null, file_url text not null, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists customer_notes (id uuid primary key default gen_random_uuid(), customer_id uuid not null references customers(id) on delete cascade, note text not null, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
 
-create table if not exists service_tickets (
-  id uuid primary key default gen_random_uuid(),
-  customer_id uuid not null references customers(id),
-  priority text not null default 'Medium',
-  status text not null default 'Open',
-  issue text not null,
-  assigned_to uuid references profiles(id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
+create table if not exists lead_sources (id uuid primary key default gen_random_uuid(), name text unique not null, is_active boolean default true, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists lead_status (id uuid primary key default gen_random_uuid(), name text unique not null, sort_order int default 0, is_closed boolean default false, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists leads (id uuid primary key default gen_random_uuid(), branch_id uuid references branches(id), name text not null, phone text not null, email text, source_id uuid references lead_sources(id), status_id uuid references lead_status(id), requirement text, assigned_to uuid references profiles(id), customer_id uuid references customers(id), next_follow_up_at timestamptz, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz not null default now(), updated_at timestamptz not null default now(), deleted_at timestamptz);
+create table if not exists lead_followups (id uuid primary key default gen_random_uuid(), lead_id uuid not null references leads(id) on delete cascade, followup_at timestamptz not null, notes text, outcome text, next_followup_at timestamptz, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
 
-create table if not exists audit_logs (
-  id uuid primary key default gen_random_uuid(),
-  table_name text not null,
-  record_id uuid,
-  action text not null,
-  actor_id uuid references profiles(id),
-  old_data jsonb,
-  new_data jsonb,
-  created_at timestamptz not null default now()
-);
+create table if not exists product_categories (id uuid primary key default gen_random_uuid(), name text unique not null, parent_id uuid references product_categories(id), created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists brands (id uuid primary key default gen_random_uuid(), name text unique not null, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists products (id uuid primary key default gen_random_uuid(), sku text unique not null, name text not null, category_id uuid references product_categories(id), brand_id uuid references brands(id), unit text not null default 'pcs', sale_price numeric(12,2) not null default 0, low_stock_qty integer not null default 5, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists warehouses (id uuid primary key default gen_random_uuid(), branch_id uuid references branches(id), name text not null, code text unique not null, address text, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists warehouse_racks (id uuid primary key default gen_random_uuid(), warehouse_id uuid not null references warehouses(id) on delete cascade, code text not null, shelf text, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz, unique(warehouse_id, code));
+create table if not exists warehouse_bins (id uuid primary key default gen_random_uuid(), rack_id uuid not null references warehouse_racks(id) on delete cascade, code text not null, product_id uuid references products(id), available_stock numeric(12,2) default 0 check (available_stock >= 0), reserved_stock numeric(12,2) default 0 check (reserved_stock >= 0), issued_stock numeric(12,2) default 0 check (issued_stock >= 0), created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz, unique(rack_id, code));
+create table if not exists stock_transactions (id uuid primary key default gen_random_uuid(), product_id uuid not null references products(id), warehouse_bin_id uuid references warehouse_bins(id), transaction_type text not null, quantity numeric(12,2) not null check (quantity > 0), reference_type text, reference_id uuid, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists stock_adjustments (id uuid primary key default gen_random_uuid(), product_id uuid not null references products(id), warehouse_bin_id uuid references warehouse_bins(id), quantity_delta numeric(12,2) not null, reason text not null, approved_by uuid references profiles(id), created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
 
-create index if not exists idx_leads_status on leads(status) where deleted_at is null;
-create index if not exists idx_customers_phone on customers(phone) where deleted_at is null;
-create index if not exists idx_service_status on service_tickets(status) where deleted_at is null;
+create table if not exists employees (id uuid primary key default gen_random_uuid(), profile_id uuid references profiles(id), employee_code text unique not null, branch_id uuid references branches(id), department text, designation text, joining_date date, status text default 'active', created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists engineers (id uuid primary key default gen_random_uuid(), profile_id uuid references profiles(id), engineer_type text check (engineer_type in ('installation','service','both')), branch_id uuid references branches(id), skill_tags text[] default '{}', is_available boolean default true, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
 
-create or replace function set_updated_at() returns trigger language plpgsql as $$
-begin new.updated_at = now(); return new; end; $$;
+create table if not exists customer_assets (id uuid primary key default gen_random_uuid(), customer_id uuid references customers(id), asset_type text not null check (asset_type in ('Camera','NVR','DVR','UPS','SMPS','Switch','Hard Disk','Cable','Access Control','Biometric','Intercom','Boom Barrier','Fire Alarm')), product_id uuid references products(id), qr_code text unique, barcode text unique, serial_number text unique not null, purchase_date date, installation_date date, warranty_start date, warranty_end date, amc_status text default 'none', current_location_id uuid, configuration jsonb default '{}', last_service_at timestamptz, next_service_at timestamptz, engineer_id uuid references engineers(id), status text default 'installed', created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists asset_locations (id uuid primary key default gen_random_uuid(), asset_id uuid not null references customer_assets(id) on delete cascade, customer_address_id uuid references customer_addresses(id), label text, installed_at timestamptz, removed_at timestamptz, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+alter table customer_assets drop constraint if exists customer_assets_current_location_fk;
+alter table customer_assets add constraint customer_assets_current_location_fk foreign key (current_location_id) references asset_locations(id) deferrable initially deferred;
+create table if not exists asset_service_history (id uuid primary key default gen_random_uuid(), asset_id uuid not null references customer_assets(id) on delete cascade, service_at timestamptz not null, engineer_id uuid references engineers(id), notes text, next_service_at timestamptz, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists asset_warranty (id uuid primary key default gen_random_uuid(), asset_id uuid not null references customer_assets(id) on delete cascade, provider text, warranty_start date not null, warranty_end date not null, terms text, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz, check (warranty_end >= warranty_start));
+create table if not exists asset_photos (id uuid primary key default gen_random_uuid(), asset_id uuid not null references customer_assets(id) on delete cascade, photo_url text not null, caption text, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
 
-drop trigger if exists trg_profiles_updated on profiles;
-create trigger trg_profiles_updated before update on profiles for each row execute function set_updated_at();
-drop trigger if exists trg_customers_updated on customers;
-create trigger trg_customers_updated before update on customers for each row execute function set_updated_at();
-drop trigger if exists trg_leads_updated on leads;
-create trigger trg_leads_updated before update on leads for each row execute function set_updated_at();
+create table if not exists notifications (id uuid primary key default gen_random_uuid(), user_id uuid references profiles(id), channel text not null check (channel in ('browser','email','whatsapp','sms')), title text not null, body text, payload jsonb default '{}', scheduled_at timestamptz, sent_at timestamptz, read_at timestamptz, status text default 'pending', created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
+create table if not exists activity_logs (id uuid primary key default gen_random_uuid(), user_id uuid references profiles(id), action text not null, entity text, entity_id uuid, metadata jsonb default '{}', created_at timestamptz default now());
+create table if not exists audit_logs (id uuid primary key default gen_random_uuid(), table_name text not null, record_id uuid, action text not null, actor_id uuid references profiles(id), old_data jsonb, new_data jsonb, created_at timestamptz not null default now());
+create table if not exists settings (id uuid primary key default gen_random_uuid(), key text unique not null, value jsonb not null default '{}', is_public boolean default false, created_by uuid references profiles(id), updated_by uuid references profiles(id), created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
 
-alter table profiles enable row level security;
-alter table customers enable row level security;
-alter table leads enable row level security;
-alter table products enable row level security;
-alter table service_tickets enable row level security;
-alter table audit_logs enable row level security;
+create or replace function audit_row_change() returns trigger language plpgsql security definer as $$
+begin
+  if tg_table_name = 'audit_logs' then return coalesce(new, old); end if;
+  insert into audit_logs(table_name, record_id, action, actor_id, old_data, new_data)
+  values (tg_table_name, coalesce(new.id, old.id), tg_op, app_user_id(), to_jsonb(old), to_jsonb(new));
+  return coalesce(new, old);
+end; $$;
 
-create policy "authenticated read profiles" on profiles for select to authenticated using (deleted_at is null);
-create policy "authenticated manage customers" on customers for all to authenticated using (deleted_at is null) with check (true);
-create policy "authenticated manage leads" on leads for all to authenticated using (deleted_at is null) with check (true);
-create policy "authenticated manage products" on products for all to authenticated using (deleted_at is null) with check (true);
-create policy "authenticated manage tickets" on service_tickets for all to authenticated using (deleted_at is null) with check (true);
-create policy "authenticated read audits" on audit_logs for select to authenticated using (true);
+create or replace function has_permission(module_name text, action_name text) returns boolean language sql stable security definer as $$
+  select exists (select 1 from user_roles ur join roles r on r.id=ur.role_id join role_permissions rp on rp.role_id=r.id join permissions p on p.id=rp.permission_id where ur.user_id=app_user_id() and r.name='admin')
+  or exists (select 1 from user_roles ur join role_permissions rp on rp.role_id=ur.role_id join permissions p on p.id=rp.permission_id where ur.user_id=app_user_id() and p.module=module_name and p.action=action_name);
+$$;
+create or replace function get_current_permissions() returns text[] language sql stable security definer as $$ select coalesce(array_agg(p.module||'.'||p.action), '{}') from user_roles ur join role_permissions rp on rp.role_id=ur.role_id join permissions p on p.id=rp.permission_id where ur.user_id=app_user_id(); $$;
+create or replace function get_current_role_names() returns text[] language sql stable security definer as $$ select coalesce(array_agg(r.name), '{}') from user_roles ur join roles r on r.id=ur.role_id where ur.user_id=app_user_id(); $$;
 
-insert into products (sku, name, category, brand, sale_price) values
-('CAM-2MP-DOME', '2MP Dome CCTV Camera', 'Camera', 'Hikvision', 2200),
-('NVR-8CH', '8 Channel NVR', 'Recorder', 'CP Plus', 6500),
-('CAB-CAT6', 'CAT6 CCTV Cable Meter', 'Cable', 'D-Link', 28)
-on conflict (sku) do nothing;
+create or replace view active_assets as select * from customer_assets where deleted_at is null;
+create or replace view warehouse_stock_summary as select p.id product_id, p.sku, p.name, coalesce(sum(wb.available_stock),0) available_stock, coalesce(sum(wb.reserved_stock),0) reserved_stock, coalesce(sum(wb.issued_stock),0) issued_stock from products p left join warehouse_bins wb on wb.product_id=p.id and wb.deleted_at is null where p.deleted_at is null group by p.id,p.sku,p.name;
+create or replace view customer_asset_summary as select c.id customer_id, c.name customer_name, count(a.id) asset_count, min(a.next_service_at) next_service_at from customers c left join customer_assets a on a.customer_id=c.id and a.deleted_at is null where c.deleted_at is null group by c.id,c.name;
+
+create index if not exists idx_profiles_branch on profiles(branch_id) where deleted_at is null; create index if not exists idx_customers_phone on customers(phone) where deleted_at is null; create index if not exists idx_leads_assigned on leads(assigned_to) where deleted_at is null; create index if not exists idx_assets_customer on customer_assets(customer_id) where deleted_at is null; create index if not exists idx_assets_serial on customer_assets(serial_number) where deleted_at is null; create index if not exists idx_bins_product on warehouse_bins(product_id) where deleted_at is null; create index if not exists idx_notifications_user_status on notifications(user_id,status) where deleted_at is null; create index if not exists idx_audit_entity on audit_logs(table_name,record_id);
+
+do $$ declare t text; begin foreach t in array array['company_settings','branches','profiles','roles','customers','customer_addresses','customer_contacts','customer_documents','customer_notes','lead_sources','lead_status','leads','lead_followups','product_categories','brands','products','warehouses','warehouse_racks','warehouse_bins','stock_transactions','stock_adjustments','employees','engineers','customer_assets','asset_locations','asset_service_history','asset_warranty','asset_photos','notifications','settings'] loop execute format('drop trigger if exists trg_%I_updated on %I', t, t); execute format('create trigger trg_%I_updated before update on %I for each row execute function set_updated_at()', t, t); execute format('drop trigger if exists trg_%I_audit on %I', t, t); execute format('create trigger trg_%I_audit after insert or update or delete on %I for each row execute function audit_row_change()', t, t); end loop; end $$;
+
+do $$ declare t text; begin foreach t in array array['company_settings','branches','profiles','roles','permissions','role_permissions','user_roles','customers','customer_addresses','customer_contacts','customer_documents','customer_notes','lead_sources','lead_status','leads','lead_followups','product_categories','brands','products','warehouses','warehouse_racks','warehouse_bins','stock_transactions','stock_adjustments','employees','engineers','customer_assets','asset_locations','asset_service_history','asset_warranty','asset_photos','notifications','activity_logs','audit_logs','settings'] loop execute format('alter table %I enable row level security', t); end loop; end $$;
+
+do $$ declare t text; begin foreach t in array array['company_settings','branches','roles','permissions','role_permissions','user_roles','customers','customer_addresses','customer_contacts','customer_documents','customer_notes','lead_sources','lead_status','leads','lead_followups','product_categories','brands','products','warehouses','warehouse_racks','warehouse_bins','stock_transactions','stock_adjustments','employees','engineers','customer_assets','asset_locations','asset_service_history','asset_warranty','asset_photos','notifications','settings'] loop execute format('drop policy if exists "rbac_select" on %I', t); execute format('create policy "rbac_select" on %I for select to authenticated using (has_permission(%L,''view''))', t, t); execute format('drop policy if exists "rbac_insert" on %I', t); execute format('create policy "rbac_insert" on %I for insert to authenticated with check (has_permission(%L,''create''))', t, t); execute format('drop policy if exists "rbac_update" on %I', t); execute format('create policy "rbac_update" on %I for update to authenticated using (has_permission(%L,''edit'')) with check (has_permission(%L,''edit''))', t, t, t); execute format('drop policy if exists "rbac_delete" on %I', t); execute format('create policy "rbac_delete" on %I for delete to authenticated using (has_permission(%L,''delete''))', t, t); end loop; end $$;
+drop policy if exists "profiles_self_or_admin" on profiles;
+create policy "profiles_self_or_admin" on profiles for select to authenticated using (id=app_user_id() or has_permission('profiles','view'));
+drop policy if exists "leads_sales_owner" on leads;
+create policy "leads_sales_owner" on leads for select to authenticated using (has_permission('leads','view') or assigned_to=app_user_id() or created_by=app_user_id());
+drop policy if exists "audit_admin_read" on audit_logs;
+create policy "audit_admin_read" on audit_logs for select to authenticated using (has_permission('audit_logs','view'));
+
+insert into roles(name,label) values ('admin','Admin'),('manager','Manager'),('sales','Sales'),('installation_engineer','Installation Engineer'),('service_engineer','Service Engineer'),('store_manager','Store Manager'),('hr','HR'),('accounts','Accounts'),('employee','Employee'),('customer','Customer'),('viewer','Viewer') on conflict (name) do nothing;
+insert into permissions(module, action) select module, action from unnest(array['dashboard','crm','customers','customer_addresses','customer_contacts','customer_documents','customer_notes','customer_assets','asset_locations','asset_service_history','asset_warranty','asset_photos','inventory','installation','service','amc','employees','engineers','accounts','reports','settings','assets','warehouse','warehouses','warehouse_racks','warehouse_bins','stock_transactions','stock_adjustments','audit_logs','activity_logs','notifications','company_settings','branches','roles','permissions','role_permissions','user_roles','lead_sources','lead_status','leads','lead_followups','products','product_categories','brands']) module cross join unnest(array['view','create','edit','delete','export','approve','print','upload','configure']) action on conflict (module,action) do nothing;
+insert into role_permissions(role_id, permission_id) select r.id, p.id from roles r cross join permissions p where r.name='admin' on conflict do nothing;
