@@ -1,0 +1,1 @@
+export class Router { constructor(routes) { this.routes = routes; window.addEventListener('hashchange', () => this.resolve()); } start(){ this.resolve(); } async resolve(){ const path = location.hash.replace('#/','') || ''; const page = path.split('/')[0] || 'home'; await (this.routes[page] || this.routes.home)(path); } }
