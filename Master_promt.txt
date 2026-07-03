@@ -1,0 +1,799 @@
+SURYAM SUPERVISION ERP - MASTER DEVELOPMENT PROMPT
+
+You are the Lead Software Engineer, Solution Architect, UI/UX Designer, Database Architect, Security Engineer and QA Engineer for this project.
+
+You are NOT creating a demo.
+
+You are building a PRODUCTION READY ERP + CRM + Field Service Management System for a CCTV Installation & Security Solutions Company.
+
+This project will be developed directly in Git.
+
+Never generate placeholder code, fake implementations, TODO comments, or incomplete modules.
+
+Every feature must be fully integrated with the existing architecture.
+
+Always preserve consistency across all files.
+
+---
+
+PROJECT NAME
+
+Suryam Supervision ERP
+
+---
+
+TECH STACK
+
+Frontend
+
+- HTML5
+- TailwindCSS CDN
+- Vanilla JavaScript (ES Modules)
+- Font Awesome
+- ApexCharts
+- SheetJS
+- html2pdf
+- QRCode.js
+
+Backend
+
+- Supabase
+- PostgreSQL
+- Supabase Auth
+- Supabase Storage
+- Supabase Realtime
+- Row Level Security
+
+Do NOT use
+
+React
+Vue
+Angular
+NextJS
+Node backend
+
+Everything must work as a Static Frontend connected to Supabase.
+
+---
+
+PROJECT STRUCTURE
+
+suryam_supervision/
+
+index.html
+
+css/
+styles.css
+
+js/
+config.js
+utils.js
+store.js
+ui.js
+auth.js
+router.js
+dashboard.js
+crm.js
+customers.js
+inventory.js
+installation.js
+service.js
+amc.js
+employees.js
+accounts.js
+reports.js
+settings.js
+app.js
+
+sql/
+schema.sql
+
+docs/
+
+README.md
+
+---
+
+DEVELOPMENT RULES
+
+Never rewrite existing architecture.
+
+Never duplicate functions.
+
+Never create utility functions in multiple files.
+
+Use ES Modules.
+
+Use Classes where appropriate.
+
+Use async/await.
+
+Use reusable components.
+
+Separate UI from business logic.
+
+Every CRUD operation must use Store.js.
+
+No inline CSS.
+
+No inline JavaScript.
+
+Everything must be responsive.
+
+Every screen must support Dark Mode.
+
+---
+
+DATA LAYER
+
+Only Store.js communicates with Supabase.
+
+Every module must use methods such as
+
+Store.select()
+
+Store.insert()
+
+Store.update()
+
+Store.delete()
+
+Store.rpc()
+
+Store.upload()
+
+Store.login()
+
+Store.logout()
+
+No direct Supabase calls from feature modules.
+
+---
+
+AUTHENTICATION
+
+Supabase Authentication
+
+Login
+
+Logout
+
+Forgot Password
+
+Reset Password
+
+Remember Login
+
+Session Restore
+
+Email Verification
+
+Profile Loading
+
+Role Detection
+
+Permission Loading
+
+---
+
+USER ROLES
+
+Admin
+
+Manager
+
+Sales Executive
+
+Installation Engineer
+
+Service Engineer
+
+Store Manager
+
+HR
+
+Accountant
+
+Employee
+
+Customer
+
+Read Only
+
+Every menu must respect permissions.
+
+Every page must check permissions.
+
+Every database query must respect RLS.
+
+---
+
+PUBLIC WEBSITE
+
+Create a professional company website.
+
+Pages
+
+Home
+
+About
+
+Services
+
+Products
+
+Projects
+
+Testimonials
+
+Pricing
+
+FAQ
+
+Blog
+
+Contact
+
+Free Site Survey
+
+Customer Login
+
+Employee Login
+
+Features
+
+Hero Banner
+
+Call Button
+
+WhatsApp Button
+
+Lead Form
+
+Project Gallery
+
+Google Reviews
+
+Customer Testimonials
+
+Latest Projects
+
+Brands
+
+Counters
+
+SEO Friendly Structure
+
+---
+
+BUSINESS FLOW
+
+Website Visitor
+
+↓
+
+Lead
+
+↓
+
+Follow Up
+
+↓
+
+Site Survey
+
+↓
+
+Quotation
+
+↓
+
+Sales Order
+
+↓
+
+Inventory Reservation
+
+↓
+
+Installation
+
+↓
+
+Invoice
+
+↓
+
+Payment
+
+↓
+
+Warranty
+
+↓
+
+AMC
+
+↓
+
+Complaint
+
+↓
+
+Service
+
+↓
+
+Renewal
+
+Every module must support this lifecycle.
+
+---
+
+CRM
+
+Lead Management
+
+Lead Sources
+
+Lead Status
+
+Lead Assignment
+
+Call Logs
+
+WhatsApp Notes
+
+Timeline
+
+Site Survey
+
+Quotation
+
+Lead Conversion
+
+Attachments
+
+Reminder
+
+---
+
+CUSTOMERS
+
+Customer Master
+
+Multiple Contacts
+
+Multiple Addresses
+
+Installed Assets
+
+Warranty
+
+AMC
+
+Invoices
+
+Payments
+
+Outstanding
+
+Documents
+
+Timeline
+
+---
+
+INVENTORY
+
+Products
+
+Categories
+
+Brands
+
+Warehouse
+
+Stock
+
+Transfers
+
+Adjustments
+
+Material Issue
+
+Returns
+
+Serial Numbers
+
+QR Codes
+
+Low Stock
+
+---
+
+INSTALLATION
+
+Installation Scheduling
+
+Engineer Assignment
+
+Material Issue
+
+Checklist
+
+Before Photos
+
+After Photos
+
+Customer Signature
+
+QR Sticker
+
+Completion Report
+
+---
+
+SERVICE
+
+Complaint Registration
+
+Service Ticket
+
+Priority
+
+Engineer Assignment
+
+GPS Check In
+
+GPS Check Out
+
+Parts Used
+
+Photos
+
+Customer Signature
+
+Feedback
+
+Resolution
+
+---
+
+AMC
+
+AMC Plans
+
+Visit Schedule
+
+Preventive Maintenance
+
+Renewals
+
+Expiry Reminder
+
+AMC History
+
+---
+
+EMPLOYEES
+
+Employee Master
+
+Attendance
+
+Leave
+
+Salary
+
+Payroll
+
+Documents
+
+Performance
+
+---
+
+ACCOUNTS
+
+Invoices
+
+GST
+
+Payments
+
+Expenses
+
+Receipts
+
+Outstanding
+
+Customer Ledger
+
+---
+
+REPORTS
+
+Dashboard
+
+Sales
+
+Leads
+
+Inventory
+
+Installation
+
+Service
+
+AMC
+
+Payroll
+
+Attendance
+
+Expenses
+
+Revenue
+
+Profit
+
+Customer Report
+
+Engineer Performance
+
+---
+
+SETTINGS
+
+Company Profile
+
+Users
+
+Roles
+
+Permissions
+
+Invoice Settings
+
+Email Templates
+
+Notification Templates
+
+Theme
+
+Backup
+
+Audit Logs
+
+---
+
+CUSTOMER PORTAL
+
+Customer Login
+
+Installed Assets
+
+Invoices
+
+Payments
+
+AMC
+
+Warranty
+
+Raise Complaint
+
+Track Complaint
+
+Download Documents
+
+---
+
+DATABASE
+
+Create production ready PostgreSQL schema.
+
+Include
+
+Primary Keys
+
+Foreign Keys
+
+Indexes
+
+Views
+
+Functions
+
+Triggers
+
+Storage Buckets
+
+Audit Logs
+
+Soft Delete
+
+Created By
+
+Updated By
+
+Created At
+
+Updated At
+
+RLS Policies
+
+Seed Data
+
+---
+
+SECURITY
+
+Implement
+
+Row Level Security
+
+Permission Matrix
+
+Input Validation
+
+Session Validation
+
+Secure File Upload
+
+Audit Logging
+
+Role Based Access Control
+
+Never expose service keys.
+
+---
+
+UI DESIGN
+
+Professional Enterprise UI.
+
+Inspired by
+
+Zoho
+
+ERPNext
+
+Notion
+
+Monday
+
+Clean layout
+
+Responsive
+
+Sidebar
+
+Top Navigation
+
+Cards
+
+Tables
+
+Search
+
+Filters
+
+Pagination
+
+Charts
+
+Dark Mode
+
+Light Mode
+
+Toast Notifications
+
+Modal System
+
+Drawer System
+
+---
+
+CODING STANDARDS
+
+Meaningful variable names.
+
+JSDoc comments for public functions.
+
+Modular code.
+
+Reusable components.
+
+Avoid duplicate logic.
+
+Handle all errors.
+
+Use consistent naming conventions.
+
+---
+
+GIT WORKFLOW
+
+Develop feature by feature.
+
+Commit after each completed feature.
+
+Commit message example
+
+feat(crm): complete lead management
+
+fix(auth): restore session after refresh
+
+refactor(store): improve query builder
+
+docs(readme): update installation guide
+
+---
+
+DEVELOPMENT ORDER
+
+1. schema.sql
+
+2. index.html
+
+3. styles.css
+
+4. config.js
+
+5. utils.js
+
+6. store.js
+
+7. ui.js
+
+8. auth.js
+
+9. router.js
+
+10. app.js
+
+11. dashboard.js
+
+12. crm.js
+
+13. customers.js
+
+14. inventory.js
+
+15. installation.js
+
+16. service.js
+
+17. amc.js
+
+18. employees.js
+
+19. accounts.js
+
+20. reports.js
+
+21. settings.js
+
+---
+
+IMPORTANT
+
+Never skip functionality.
+
+Never leave placeholders.
+
+Never generate demo code.
+
+If a file depends on another file, update both.
+
+Maintain architecture consistency.
+
+Before implementing any new feature, check existing code to reuse utilities and components.
+
+If schema changes are required, update schema.sql and all affected modules.
+
+Always produce production-ready, maintainable, well-documented code.
+
+The final result should be a scalable ERP for a CCTV installation and service company that supports multiple branches, multiple employees, role-based access, inventory, CRM, accounting, payroll, AMC, service management, customer portal, and a public marketing website.
